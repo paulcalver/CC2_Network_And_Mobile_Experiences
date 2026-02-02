@@ -59,12 +59,18 @@ function draw() {
 
 // Use mousePressed instead - more reliable
 function mousePressed() {
-  requestPermission();
+  if (!permissionGranted) {
+    requestPermission();
+    return false; // Prevent default behavior on iOS
+  }
 }
 
 // Also keep touchStarted as backup
 function touchStarted() {
-  requestPermission();
+  if (!permissionGranted) {
+    requestPermission();
+    return false; // Prevent default behavior on iOS
+  }
 }
 
 function requestPermission() {
@@ -78,6 +84,8 @@ function requestPermission() {
         if (response === 'granted') {
           permissionGranted = true;
           console.log('Motion permission granted');
+        } else {
+          console.log('Motion permission denied');
         }
       })
       .catch(err => {
