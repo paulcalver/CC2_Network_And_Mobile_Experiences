@@ -2,6 +2,7 @@ let socket;
 let myMotion = { x: 0, y: 0, z: 0 };
 let otherDevices = {}; // Store motion from other phones
 let myHue;
+let permissionGranted = false;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -14,32 +15,27 @@ function setup() {
 
   // Receive motion data from other phones
   socket.on("motion", (data) => {
-    // Store it with the sender's socket ID
     otherDevices[data.id] = {
       x: data.x,
       y: data.y,
       z: data.z,
-      col: data.col, // Store their colour too!
+      col: data.col,
       timestamp: Date.now()
     };
   });
 }
 
-function touchStarted() {
-  // Request device motion permission on iOS
-  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-    DeviceMotionEvent.requestPermission()
-      .then(response => {
-        if (response === 'granted') {
-          console.log('Motion permission granted');
-        }
-      })
-      .catch(console.error);
-  }
-}
-
 function draw() {
   background(20, 100, 100);
+
+  // Show prompt if permission not granted
+  if (!permissionGranted) {
+    fill(0, 0, 100);
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("Tap to enable motion", width/2, height/2);
+    return;
+  }
 
   // Visualise YOUR motion (in your colour)
   fill(myHue, 100, 100);
@@ -52,7 +48,7 @@ function draw() {
   // Visualise OTHER phones' motion (in their colours)
   for (let id in otherDevices) {
     let device = otherDevices[id];
-    fill(device.col, 100, 100); // Use their colour
+    fill(device.col, 100, 100);
     ellipse(
       map(device.x, -10, 10, 0, width),
       map(device.y, -10, 10, 0, height),
@@ -61,7 +57,26 @@ function draw() {
   }
 }
 
+function touchStarted() {
+  // Request permission for iOS 13+
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          permissionGranted = true;
+          console.log('Motion permission granted');
+        }
+      })
+      .catch(console.error);
+  } else {
+    // Non-iOS or older iOS
+    permissionGranted = true;
+  }
+}
+
 function deviceMoved() {
+  if (!permissionGranted) return;
+  
   // Update your motion
   myMotion.x = accelerationX || 0;
   myMotion.y = accelerationY || 0;
