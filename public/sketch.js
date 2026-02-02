@@ -32,7 +32,7 @@ function draw() {
   if (!permissionGranted) {
     fill(0, 0, 100);
     textAlign(CENTER, CENTER);
-    textSize(24);
+    textSize(18);
     text("Tap to enable motion", width/2, height/2);
     return;
   }
@@ -57,20 +57,36 @@ function draw() {
   }
 }
 
+// Use mousePressed instead - more reliable
+function mousePressed() {
+  requestPermission();
+}
+
+// Also keep touchStarted as backup
 function touchStarted() {
+  requestPermission();
+}
+
+function requestPermission() {
+  console.log("Permission request triggered");
+  
   // Request permission for iOS 13+
   if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
     DeviceMotionEvent.requestPermission()
       .then(response => {
+        console.log("Permission response:", response);
         if (response === 'granted') {
           permissionGranted = true;
           console.log('Motion permission granted');
         }
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error("Permission error:", err);
+      });
   } else {
     // Non-iOS or older iOS
     permissionGranted = true;
+    console.log('Motion available without permission');
   }
 }
 
