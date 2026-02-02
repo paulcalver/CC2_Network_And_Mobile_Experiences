@@ -25,6 +25,19 @@ function setup() {
   });
 }
 
+function touchStarted() {
+  // Request device motion permission on iOS
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          console.log('Motion permission granted');
+        }
+      })
+      .catch(console.error);
+  }
+}
+
 function draw() {
   background(20, 100, 100);
 
