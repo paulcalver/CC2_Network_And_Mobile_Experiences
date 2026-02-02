@@ -3,12 +3,25 @@ let myMotion = { x: 0, y: 0, z: 0 };
 let otherDevices = {}; // Store motion from other phones
 let myHue;
 let permissionGranted = false;
+let permissionButton;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   colorMode(HSB, 360, 100, 100);
   myHue = random(0, 360);
   noStroke();
+  
+  // Create button for iOS permission
+  permissionButton = createButton('Tap to Enable Motion');
+  permissionButton.position(windowWidth/2 - 100, windowHeight/2 - 25);
+  permissionButton.size(200, 50);
+  permissionButton.style('font-size', '16px');
+  permissionButton.style('background-color', '#000000');
+  permissionButton.style('color', 'white');
+  permissionButton.style('border', 'none');
+  permissionButton.style('border-radius', '8px');
+  permissionButton.style('cursor', 'pointer');
+  permissionButton.mousePressed(requestPermission);
   
   // Connect to Socket.IO server
   socket = io();
@@ -28,12 +41,13 @@ function setup() {
 function draw() {
   background(20, 100, 100);
 
-  // Show prompt if permission not granted
+  // Hide button once permission granted
+  if (permissionGranted && permissionButton) {
+    permissionButton.hide();
+  }
+  
+  // Don't draw anything until permission granted
   if (!permissionGranted) {
-    fill(0, 0, 100);
-    textAlign(CENTER, CENTER);
-    textSize(18);
-    text("Tap to enable motion", width/2, height/2);
     return;
   }
 
@@ -56,23 +70,6 @@ function draw() {
     );
   }
 }
-
-// Use mousePressed instead - more reliable
-function mousePressed() {
-  if (!permissionGranted) {
-    requestPermission();
-    return false; // Prevent default behavior on iOS
-  }
-}
-
-// Also keep touchStarted as backup
-function touchStarted() {
-  if (!permissionGranted) {
-    requestPermission();
-    return false; // Prevent default behavior on iOS
-  }
-}
-
 function requestPermission() {
   console.log("Permission request triggered");
   
@@ -84,17 +81,28 @@ function requestPermission() {
         if (response === 'granted') {
           permissionGranted = true;
           console.log('Motion permission granted');
+          if (permissionButton) permissionButton.hide();
         } else {
           console.log('Motion permission denied');
+          alert('Motion permission denied. Please allow motion access in Safari settings.');
         }
       })
       .catch(err => {
         console.error("Permission error:", err);
+        alert('Error requesting motion permission: ' + err.message);
       });
   } else {
     // Non-iOS or older iOS
     permissionGranted = true;
     console.log('Motion available without permission');
+    if (permissionButton) permissionButton.hide();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  if (!permissionGranted && permissionButton) {
+    permissionButton.position(windowWidth/2 - 100, windowHeight/2 - 25);
   }
 }
 
