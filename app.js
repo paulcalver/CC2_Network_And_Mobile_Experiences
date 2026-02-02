@@ -1,15 +1,31 @@
 import express from "express";
-import http from "http";
 import { Server } from "socket.io";
-
-//// REMOVE IF YOU PUT ON RENDER //////
-//import open, {openApp, apps} from 'open';//only needed for a simple development tool remove if hosting online see above
-//// REMOVE IF YOU PUT ON RENDER //////
+import https from "https";
+import http from "http";
+import fs from "fs";
+import open from 'open';
 
 const app = express();
-const server = http.createServer(app);
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Create server based on environment
+let server;
+if (isProduction) {
+  // Production: Use HTTP (Render handles HTTPS)
+  server = http.createServer(app);
+  console.log("Running in production mode (HTTP)");
+} else {
+  // Development: Use HTTPS with self-signed certificate (required for iOS device motion)
+  const serverOptions = {
+    key: fs.readFileSync('./server.key'),
+    cert: fs.readFileSync('./server.cert')
+  };
+  server = https.createServer(serverOptions, app);
+  console.log("Running in development mode (HTTPS)");
+}
+
 const io = new Server(server);
-const port = process.env.PORT || 3500;
+const port = process.env.PORT || 3000;
 
 app.use(express.static("public"));
 
@@ -24,12 +40,24 @@ io.on("connection", (socket) => {
   
   // Receive motion data from any phone
   socket.on("motion", (data) => {
-    // Store this user's latest motion
+    // Store this user's latest motion with all the data
     connectedUsers[socket.id] = {
+      // Ball position (for rendering)
       x: data.x,
       y: data.y,
-      z: data.z,
       col: data.col,
+      
+      // Raw sensor data (in case you want to use it later)
+      accX: data.accX || 0,
+      accY: data.accY || 0,
+      accZ: data.accZ || 0,
+      rrateX: data.rrateX || 0,
+      rrateY: data.rrateY || 0,
+      rrateZ: data.rrateZ || 0,
+      alpha: data.alpha || 0,
+      beta: data.beta || 0,
+      gamma: data.gamma || 0,
+      
       timestamp: Date.now()
     };
     
@@ -38,8 +66,18 @@ io.on("connection", (socket) => {
       id: socket.id,
       x: data.x,
       y: data.y,
-      z: data.z,
-      col: data.col
+      col: data.col,
+      
+      // Include raw sensor data in broadcast
+      accX: data.accX || 0,
+      accY: data.accY || 0,
+      accZ: data.accZ || 0,
+      rrateX: data.rrateX || 0,
+      rrateY: data.rrateY || 0,
+      rrateZ: data.rrateZ || 0,
+      alpha: data.alpha || 0,
+      beta: data.beta || 0,
+      gamma: data.gamma || 0
     });
   });
 
@@ -53,10 +91,10 @@ io.on("connection", (socket) => {
 });
 
 server.listen(port, () => {
-  console.log("listening on: " + port);
-});
+  console.log("Server listening on port: " + port);
 
-//// REMOVE IF YOU PUT ON RENDER //////
-//open in browser: dev environment only!
-//await open(`http://localhost:${port}`);//opens in your default browser
-//// REMOVE IF YOU PUT ON RENDER //////
+  // Auto-open browser in development only
+  if (!isProduction) {
+    open(`https://localhost:${port}`);
+  }
+});
