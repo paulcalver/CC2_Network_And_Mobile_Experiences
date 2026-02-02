@@ -26,6 +26,12 @@ function setup() {
   // Connect to Socket.IO server
   socket = io();
 
+  // Receive EXISTING users when you first connect
+  socket.on("existing_users", (users) => {
+    console.log("Existing users:", users);
+    otherDevices = users; // Load all existing users
+  });
+
   // Receive motion data from other phones
   socket.on("motion", (data) => {
     otherDevices[data.id] = {
@@ -36,16 +42,17 @@ function setup() {
       timestamp: Date.now()
     };
   });
+  
+  // Remove users when they disconnect
+  socket.on("user_left", (id) => {
+    console.log("User left:", id);
+    delete otherDevices[id];
+  });
 }
 
 function draw() {
   background(20, 100, 100);
 
-  // Hide button once permission granted
-  if (permissionGranted && permissionButton) {
-    permissionButton.hide();
-  }
-  
   // Don't draw anything until permission granted
   if (!permissionGranted) {
     return;
@@ -69,7 +76,16 @@ function draw() {
       50, 50
     );
   }
+  
+  // Optional: Clean up stale devices (haven't sent data in 5 seconds)
+  let now = Date.now();
+  for (let id in otherDevices) {
+    if (now - otherDevices[id].timestamp > 5000) {
+      delete otherDevices[id];
+    }
+  }
 }
+
 function requestPermission() {
   console.log("Permission request triggered");
   
@@ -102,6 +118,7 @@ function requestPermission() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   if (!permissionGranted && permissionButton) {
+    // Recenter button on resize
     permissionButton.position(windowWidth/2 - 100, windowHeight/2 - 25);
   }
 }
